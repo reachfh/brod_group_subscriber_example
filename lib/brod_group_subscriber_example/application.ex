@@ -23,7 +23,7 @@ defmodule BrodGroupSubscriberExample.Application do
     cache_dir = Application.get_env(@app, :cache_dir, "/tmp")
     :ok = File.mkdir_p(cache_dir)
 
-    # schema_dir = Path.join(to_string(:code.priv_dir(@app)), "avro_schema")
+    schema_dir = Path.join(to_string(:code.priv_dir(@app)), "avro_schema")
 
     kafka_offsets_file = Application.get_env(@app, :kafka_offsets_file, @default_kafka_offsets_file)
     kafka_offsets_path = to_charlist(Path.join(state_dir, kafka_offsets_file))
@@ -32,7 +32,7 @@ defmodule BrodGroupSubscriberExample.Application do
     Logger.debug("Kafka offsets: #{inspect(get_kafka_offsets(), limit: :infinity)}")
 
     subjects = Application.get_env(@app, :kafka_topic_subjects, %{})
-    # aliases = Application.get_env(@app, :kafka_subject_aliases, %{})
+    aliases = Application.get_env(@app, :kafka_subject_aliases, %{})
 
     consumer_config = Application.get_env(@app, :kafka_consumer)
 
@@ -41,7 +41,7 @@ defmodule BrodGroupSubscriberExample.Application do
     }
     children = [
       {AvroSchema, [cache_dir: cache_dir]},
-      # {BrodGroupSubscriberExample.AvroSchemaLoader, [schema_dir: schema_dir, aliases: aliases]},
+      {BrodGroupSubscriberExample.AvroSchemaLoader, [schema_dir: schema_dir, aliases: aliases]},
       brod_group_subscriber_v2(consumer_config, BrodGroupSubscriberExample.Subscriber, init_data)
     ]
 
