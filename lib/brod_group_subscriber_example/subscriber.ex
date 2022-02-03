@@ -91,10 +91,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
       Logger.info("record: #{inspect(record)}")
     end
 
-    Logger.debug(
-      "Saving offset #{inspect(topic)} #{inspect(partition)} #{inspect(high_wm_offset)}"
-    )
-
+    Logger.debug("Saving offset #{inspect(topic)} #{partition} #{high_wm_offset}")
     :dets.insert(@offsets_tab, {{topic, partition}, to_integer(high_wm_offset)})
 
     {:ok, :ack, state}
