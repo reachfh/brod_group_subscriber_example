@@ -45,14 +45,14 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   end
 
   @impl :brod_group_subscriber_v2
-  def init(init_data, args) do
-    Logger.info("init: #{inspect(init_data)} #{inspect(args)}")
+  def init(init_info, init_data) do
+    Logger.info("init: #{inspect(init_info)} #{inspect(init_data)}")
 
     state = %{
-      init_data: init_data,
+      init_info: init_info,
 
       # Mapping from Kafka topic to Avro subject/schema
-      subjects: args[:subjects] || %{},
+      subjects: init_data[:subjects] || %{},
 
       # Cache of decoders by Avro schema reference
       decoders: %{}
@@ -140,8 +140,9 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   @impl :brod_group_subscriber_v2
   @spec get_committed_offset(term(), :brod.topic(), :brod.partition()) ::
           {:ok, :brod.offset() | :undefined}
-  def get_committed_offset(state, topic, partition) do
-    case :dets.lookup(state.offsets_tab, {topic, partition}) do
+  def get_committed_offset(init_data, topic, partition) do
+    Logger.info("init_data: #{inspect(init_data)}")
+    case :dets.lookup(init_data.offsets_tab, {topic, partition}) do
       [{_k, offset}] ->
         Logger.info("Saved offset: #{inspect(topic)} #{inspect(partition)} #{inspect(offset)}")
         {:ok, offset}
