@@ -43,7 +43,8 @@ defmodule BrodGroupSubscriberExample.MixProject do
     ]
   end
 
-  # def extra_applications(:test), do: [:tools, :eex]
+  def extra_applications(:test), do: [:tools]
+  def extra_applications(:dev), do: [:tools]
   def extra_applications(_), do: []
 
   defp erlc_options do
@@ -77,6 +78,7 @@ defmodule BrodGroupSubscriberExample.MixProject do
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
+      {:exometer_core, "~> 1.6"},
       {:hackney, "~> 1.16"},
       {:jason, "~> 1.2"},
       {:mix_audit, "~> 1.0.0", only: [:dev, :test], runtime: false},
@@ -84,10 +86,13 @@ defmodule BrodGroupSubscriberExample.MixProject do
       {:opentelemetry, "~> 1.0", override: true},
       {:opentelemetry_api, "~> 1.0", override: true},
       {:opentelemetry_exporter, "~> 1.0"},
+      {:prometheus_exometer, "~> 0.2"},
+      {:retry, "~> 0.13"},
       {:sobelow, "~> 0.11.0", only: [:dev, :test], runtime: false},
       {:telemetry, "~> 0.4.3", override: true},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
+      {:timex, "~> 3.6"},
     ]
   end
 end

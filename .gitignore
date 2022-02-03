@@ -24,3 +24,5 @@ brod_group_subscriber_example-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+/cache/
+/state/
