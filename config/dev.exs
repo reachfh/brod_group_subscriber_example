@@ -54,11 +54,11 @@ config :brod,
       # query_api_versions: false, # default true, set false for Kafka < 0.10
       # reconnect_cool_down_seconds: 1, # default 1
       restart_delay_seconds: 10, # default 5
-      ssl: [
-        # certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
-        # keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
-        # cacertfile: to_charlist("#{config_dir}/ssl/kafka/ca.cert.pem")
-      ],
+      # ssl: [
+      #   certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
+      #   keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
+      #   cacertfile: to_charlist("#{config_dir}/ssl/kafka/ca.cert.pem")
+      # ],
       # Credentials for SASL/Plain authentication.
       # sasl: {:plain, "username", "password"}
       # connect_timeout: 5000, # default 5000
