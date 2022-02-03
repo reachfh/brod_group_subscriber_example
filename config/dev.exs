@@ -74,10 +74,10 @@ config :setup,
 config :logger,
   level: :debug
 
-# Do not include metadata nor timestamps in development logs
 config :logger, :console,
-#   format: "[$level] $message\n"
-  format: "$metadata[$level] $levelpad$message\n",
+  level: :info,
+  # format: "$metadata[$level] $levelpad$message\n",
+  format: {BrodGroupSubscriberExample.LoggerFormatter, :format},
   # metadata: :all
   # metadata: [:pid, :application, :module, :function, :line]
   metadata: [:pid, :module, :function, :line]
