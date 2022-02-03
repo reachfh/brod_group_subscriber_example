@@ -43,6 +43,9 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     {:ok, state}
   end
 
+  # The proto of handle_message specifies kafka_message, but we have kafka_message_set
+  @dialyzer {:nowarn_function, handle_message: 2}
+
   # Callback when message_type = message_set
   # This processes a batch of messages at a time
   @impl :brod_group_subscriber_v2
