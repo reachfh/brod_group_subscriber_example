@@ -55,8 +55,6 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     Logger.debug("Processing message_set #{topic} #{partition} #{high_wm_offset}")
     # Metrics.inc([:records], [topic: topic], length(messages))
 
-    # Convert list of Kafka Avro messages into list of JSON encoded Elasticsearch bulk records
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
     {data, state} =
       Enum.reduce(messages, {[], state}, fn message, {acc, state} ->
         kafka_message(value: value) = message
