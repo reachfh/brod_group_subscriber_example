@@ -1,12 +1,12 @@
 import Config
 
 app_ext_name = String.replace(to_string(Mix.Project.config[:app]), "_", "-")
-state_dir = "/var/lib/#{app_ext_name}"
+state_dir = "state"
 data_dir = "#{state_dir}/data"
-log_dir = "/var/log/#{app_ext_name}"
+log_dir = "logs"
 log_root = log_dir
-config_dir = "/etc/#{app_ext_name}"
-cache_dir = "/var/cache/#{app_ext_name}"
+config_dir = "config"
+cache_dir = "cache"
 
 config :brod_group_subscriber_example,
   config_dir: config_dir,
@@ -55,9 +55,9 @@ config :brod,
       # reconnect_cool_down_seconds: 1, # default 1
       restart_delay_seconds: 10, # default 5
       ssl: [
-        certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
-        keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
-        cacertfile: to_charlist("#{config_dir}/ssl/kafka/ca.cert.pem")
+        # certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
+        # keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
+        # cacertfile: to_charlist("#{config_dir}/ssl/kafka/ca.cert.pem")
       ],
       # Credentials for SASL/Plain authentication.
       # sasl: {:plain, "username", "password"}

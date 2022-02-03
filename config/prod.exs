@@ -1,6 +1,6 @@
 import Config
 
-app_ext_name = String.replace(Mix.Project.config[:app], "_", "-")
+app_ext_name = String.replace(to_string(Mix.Project.config[:app]), "_", "-")
 state_dir = "/var/lib/#{app_ext_name}"
 data_dir = "#{state_dir}/data"
 log_dir = "/var/log/#{app_ext_name}"
