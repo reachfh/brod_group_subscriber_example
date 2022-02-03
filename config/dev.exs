@@ -76,7 +76,11 @@ config :logger,
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console,
-  format: "[$level] $message\n"
+#   format: "[$level] $message\n"
+  format: "$metadata[$level] $levelpad$message\n",
+  # metadata: :all
+  # metadata: [:pid, :application, :module, :function, :line]
+  metadata: [:pid, :module, :function, :line]
 
 # https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/
 config :opentelemetry, :resource,
