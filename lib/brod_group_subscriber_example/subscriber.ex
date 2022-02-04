@@ -120,7 +120,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
       state.init_data
 
     # Mapping from Kafka topic to Avro subject/schema
-    subject = :subjects[topic]
+    subject = subjects[topic]
 
     case AvroSchema.untag(value) do
       {:ok, {{:confluent, regid}, bin}} ->
