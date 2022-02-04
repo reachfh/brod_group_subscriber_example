@@ -22,9 +22,10 @@ config :setup,
 config :logger,
   level: :warn
 
-# Do not include metadata nor timestamps in development logs
 config :logger, :console,
-  format: "[$level] $message\n"
+  # format: "[$level] $message\n"
+  format: {BrodGroupSubscriberExample.LoggerFormatter, :format},
+  metadata: [:pid, :module, :function, :line]
 
 # https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/
 config :opentelemetry, :resource,

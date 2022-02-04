@@ -13,16 +13,33 @@ config :brod_group_subscriber_example,
   state_dir: state_dir,
   data_dir: data_dir,
   cache_dir: cache_dir,
-  kafka_consumer: [
+  kafka_subscriber_config: %{
+    # Client id of the brod client (mandatory)
+    client: :client1,
+    # Consumer group ID which should be unique per kafka cluster (mandatory)
+    group_id: app_ext_name,
+    # Predefined set of topic names to join the group (mandatory)
     topics: [
       "foo",
     ],
-    group_id: app_ext_name,
+    # Data passed to `CbModule:init/2' when initializing subscriber.
+    # Optional, default :undefined
+    init_data: %{
+      # Mapping from Kafka topic to Avro subject/schema
+      subjects: %{
+        # "log_request" => "com.cogini.RequestLog"
+      },
+      offsets_tab: :kafka_offsets
+    },
+    # Type of message handled by callback module, :message (default) or :message_set
+    message_type: :message_set, # default is :message
+    # Config for group coordinator (optional)
     group_config: [
       offset_commit_policy: :consumer_managed, # default :commit_to_kafka_v2
       # offset_commit_interval_seconds: 5, # default 5
       # partition_assignment_strategy: :callback_implemented, # default :roundrobin_v2
     ],
+    # Config for partition consumer (optional)
     consumer_config: [
       begin_offset: :earliest, # default is :latest
       # offset_reset_policy: :reset_by_subscriber, # default
@@ -38,14 +55,13 @@ config :brod_group_subscriber_example,
       #  Maximum bytes to fetch in a batch of messages.
       # max_bytes: 1048576, # default 1048576, 1 MB
       max_bytes: 131_072, # default 1MB
-    ],
-    message_type: :message_set # default is :message
-  ]
+    ]
+  }
 
 config :brod,
   clients: [
     client1: [
-      # endpoints: [localhost: 9092], # non ssl
+      endpoints: [localhost: 9092], # non ssl
       # endpoints: [localhost: 9093], # ssl
       allow_topic_auto_creation: false, # for safety, default true
       # get_metadata_timeout_seconds: 5, # default 5
@@ -54,11 +70,11 @@ config :brod,
       # query_api_versions: false, # default true, set false for Kafka < 0.10
       # reconnect_cool_down_seconds: 1, # default 1
       restart_delay_seconds: 10, # default 5
-      ssl: [
-        certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
-        keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
-        cacertfile: to_charlist("#{config_dir}/ssl/kafka/ca.cert.pem")
-      ],
+      # ssl: [
+      #   certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
+      #   keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
+      #   cacertfile: to_charlist("#{config_dir}/ssl/kafka/ca.cert.pem")
+      # ],
       # Credentials for SASL/Plain authentication.
       # sasl: {:plain, "username", "password"}
       # connect_timeout: 5000, # default 5000
@@ -83,7 +99,8 @@ config :logger,
 config :logger, :console,
   level: :info,
   # format: "$metadata[$level] $levelpad$message\n",
-  format: {BrodGroupSubscriberExample.LoggerFormatter, :format_journald},
+  # format: {BrodGroupSubscriberExample.LoggerFormatter, :format_journald},
+  format: {BrodGroupSubscriberExample.LoggerFormatter, :format},
   # metadata: :all
   metadata: [:pid, :application, :module, :function, :line]
   # metadata: [:pid, :module, :function, :line]
