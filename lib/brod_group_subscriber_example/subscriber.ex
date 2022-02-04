@@ -91,10 +91,10 @@ defmodule BrodGroupSubscriberExample.Subscriber do
             {:ok, record} = AvroSchema.decode(bin, decoder)
             {[record | acc], state}
 
-            {:error, :unknown_tag} ->
-              # Metrics.inc([:records, :error], topic: topic)
-              # {:ok, encoded} = encode_error(message, "unknown_tag", es_config)
-              {[value | acc], state}
+          {:error, :unknown_tag} ->
+            # Metrics.inc([:records, :error], topic: topic)
+            # {:ok, encoded} = encode_error(message, "unknown_tag", es_config)
+            {[value | acc], state}
         end
       end)
 
@@ -116,7 +116,8 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     kafka_message(offset: offset, key: key, value: value) = message
     Logger.info("#{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
 
-    %{subjects: subjects, dead_letter_queues: dlq, offsets_tab: offsets_tab, client: client} = state.init_data
+    %{subjects: subjects, dead_letter_queues: dlq, offsets_tab: offsets_tab, client: client} =
+      state.init_data
 
     # Mapping from Kafka topic to Avro subject/schema
     subject = :subjects[topic]
@@ -146,7 +147,9 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
       {:error, :unknown_tag} ->
         # Metrics.inc([:records, :error], topic: topic)
-        Logger.error("unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
+        Logger.error(
+          "unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}"
+        )
 
         {:ok, offset} = :brod.produce_sync_offset(client, dlq[topic], :random, key, value)
         Logger.debug(fn -> "Produced #{key} to #{topic} offset #{offset}" end)
@@ -192,7 +195,8 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
     case :dets.lookup(offsets_tab, {topic, partition}) do
       [{_k, offset}] ->
-        Logger.debug("Found offset for topic #{inspect(topic)} partition #{partition} offset #{inspect(offset)}")
+        Logger.debug("Found offset for #{inspect(topic)} partition #{partition} offset #{offset}")
+
         {:ok, offset}
 
       _ ->
