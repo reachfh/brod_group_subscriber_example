@@ -7,7 +7,6 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   @behaviour :brod_group_subscriber_v2
 
   require Logger
-  # alias PrometheusExometer.Metrics
 
   require Record
 
@@ -65,7 +64,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     %{topic: topic, partition: partition, init_data: init_data} = state
 
     Logger.debug("Processing message_set #{topic} #{partition} #{high_wm_offset}")
-    # Metrics.inc([:records], [topic: topic], length(messages))
+    :telemetry.execute([:record], %{count: length(messages)}, %{topic: topic, partition: partition})
 
     offsets_tab = init_data[:offsets_tab]
 
@@ -92,7 +91,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
             {[record | acc], state}
 
           {:error, :unknown_tag} ->
-            # Metrics.inc([:records, :error], topic: topic)
+            :telemetry.execute([:record, :error], %{count: 1}, %{topic: topic, partition: partition})
             # {:ok, encoded} = encode_error(message, "unknown_tag", es_config)
             {[value | acc], state}
         end
@@ -100,7 +99,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
     lag = get_lag(List.last(messages))
     Logger.debug("lag: #{lag}")
-    # Metrics.inc([:lag], [topic: topic], lag)
+    :telemetry.execute([:lag], %{duration: lag}, %{topic: topic, partition: partition})
 
     for record <- data do
       Logger.info("record: #{inspect(record)}")
@@ -115,11 +114,12 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   def handle_message(topic, partition, message, state) do
     kafka_message(offset: offset, key: key, value: value) = message
     Logger.info("#{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
+    :telemetry.execute([:record], %{count: 1}, %{topic: topic, partition: partition})
 
     %{subjects: subjects, dead_letter_queues: dlq, offsets_tab: offsets_tab, client: client} =
       state.init_data
 
-    # Mapping from Kafka topic to Avro subject/schema
+    # Get Avro subject/schema for topic
     subject = subjects[topic]
 
     case AvroSchema.untag(value) do
@@ -146,7 +146,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
         :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
 
       {:error, :unknown_tag} ->
-        # Metrics.inc([:records, :error], topic: topic)
+        :telemetry.execute([:record, :error], %{count: 1}, %{topic: topic, partition: partition})
         Logger.error(
           "unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}"
         )
