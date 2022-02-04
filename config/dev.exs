@@ -29,7 +29,11 @@ config :brod_group_subscriber_example,
       subjects: %{
         # "log_request" => "com.cogini.RequestLog"
       },
-      offsets_tab: :kafka_offsets
+      dead_letter_queues: %{
+        "foo" => "foo-dlq"
+      },
+      offsets_tab: :kafka_offsets,
+      client: :client1,
     },
     # Type of message handled by callback module, :message (default) or :message_set
     # message_type: :message_set, # default :message
@@ -79,8 +83,30 @@ config :brod,
       # sasl: {:plain, "username", "password"}
       # connect_timeout: 5000, # default 5000
       # request_timeout: 240000, # default 240000
+
+      auto_start_producers: true,
+      default_producer_config: [
+        # See brod/src/brod_producer.erl
+        # required_acks: -1,
+        # ack_timeout: 10000,
+        partition_buffer_limit: 512, # default is 256
+        # partition_onwire_limit: 1,
+        # max_batch_size: 10_485_760, # default is 1M
+        # buffered messages again upon receiving a error from kafka
+        # by default, brod_producer will try to retry 3 times before crashing
+        # max_retries: 3,
+        max_retries: 5,
+        # By default, brod_producer will sleep for 0.5 second before trying to send
+        # retry_backoff_ms: 500,
+        # compression: :no_compression,
+        # compression: :gzip,
+        # min_compression_batch_size: 1024,
+        # max_linger_ms: 0,
+        # max_linger_count: 0,
+      ]
     ]
   ]
+
 
 config :setup,
   home: '.',

@@ -21,6 +21,11 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     Record.extract(:kafka_message_set, from_lib: "brod/include/brod.hrl")
   )
 
+  Record.defrecord(
+    :brod_produce_reply,
+    Record.extract(:brod_produce_reply, from_lib: "brod/include/brod.hrl")
+  )
+
   # use Retry
 
   @spec child_spec(Keyword.t()) :: map()
@@ -111,12 +116,10 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     kafka_message(offset: offset, key: key, value: value) = message
     Logger.info("#{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
 
-    init_data = state.init_data
-
-    offsets_tab = init_data[:offsets_tab]
+    %{subjects: subjects, dead_letter_queues: dlq, offsets_tab: offsets_tab, client: client} = state.init_data
 
     # Mapping from Kafka topic to Avro subject/schema
-    subject = init_data[:subjects][topic]
+    subject = :subjects[topic]
 
     case AvroSchema.untag(value) do
       {:ok, {{:confluent, regid}, bin}} ->
@@ -145,10 +148,16 @@ defmodule BrodGroupSubscriberExample.Subscriber do
         # Metrics.inc([:records, :error], topic: topic)
         Logger.error("unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
 
+        {:ok, offset} = :brod.produce_sync_offset(client, dlq[topic], :random, key, value)
+        Logger.debug(fn -> "Produced #{key} to #{topic} offset #{offset}" end)
         {:ok, :ack, state}
     end
-
   end
+
+  # def handle_info(brod_produce_reply(call_ref: call_ref, result: result), state) do
+  #   Logger.info("#{inspect(call_ref)} #{inspect(result)}")
+  #   {:noreply, state}
+  # end
 
   # Get Avro decoder and cache in state
   defp get_decoder(reg, %{decoders: decoders} = state) do
@@ -176,9 +185,14 @@ defmodule BrodGroupSubscriberExample.Subscriber do
           {:ok, :brod.offset() | :undefined}
   def get_committed_offset(init_data, topic, partition) do
     Logger.debug("init_data: #{inspect(init_data)}")
-    case :dets.lookup(init_data.offsets_tab, {topic, partition}) do
+
+    offsets_tab = init_data.offsets_tab
+    offsets_data = :dets.foldl(fn {key, value}, acc -> [{key, value} | acc] end, [], offsets_tab)
+    Logger.debug("Kafka offsets: #{inspect(offsets_data, limit: :infinity)}")
+
+    case :dets.lookup(offsets_tab, {topic, partition}) do
       [{_k, offset}] ->
-        Logger.debug("Saved offset: #{inspect(topic)} #{partition} #{inspect(offset)}")
+        Logger.debug("Found offset for topic #{inspect(topic)} partition #{partition} offset #{inspect(offset)}")
         {:ok, offset}
 
       _ ->
