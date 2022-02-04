@@ -7,9 +7,6 @@ defmodule BrodGroupSubscriberExample.Application do
 
   require Logger
 
-  alias BrodGroupSubscriberExample.KafkaOffsets
-  alias BrodGroupSubscriberExample.AvroSchemaLoader
-
   @impl true
   def start(_type, _args) do
     :ok = :logger.add_handlers(@app)
@@ -26,25 +23,19 @@ defmodule BrodGroupSubscriberExample.Application do
     schema_dir = Path.join(to_string(:code.priv_dir(@app)), "avro_schema")
     aliases = Application.get_env(@app, :kafka_subject_aliases, %{})
 
-    {:ok, offsets_tab} = KafkaOffsets.open_file(state_dir: state_dir)
+    kafka_subscriber_config = Application.get_env(@app, :kafka_subscriber_config)
+    offsets_tab = kafka_subscriber_config[:init_data][:offsets_tab]
+    offsets_path = Path.join(state_dir, "#{offsets_tab}.DETS")
+    # {:ok, _offsets_tab} = :dets.open_file(offsets_tab, file: offsets_path)
 
-    subjects = Application.get_env(@app, :kafka_topic_subjects, %{})
-
-    init_data = %{
-      offsets_tab: offsets_tab,
-      subjects: subjects
-    }
-
-    {:ok, offsets} = KafkaOffsets.get_offsets(offsets_tab)
-    Logger.debug("Kafka offsets: #{inspect(offsets, limit: :infinity)}")
-
-    consumer_config = Application.get_env(@app, :kafka_consumer)
-    subscriber_config = Keyword.merge(consumer_config, init_data: init_data)
+    # offsets_data = :dets.foldl(fn {key, value}, acc -> [{key, value} | acc] end, [], offsets_tab)
+    # Logger.debug("Kafka offsets: #{inspect(offsets_data, limit: :infinity)}")
 
     children = [
       {AvroSchema, [cache_dir: cache_dir]},
-      {AvroSchemaLoader, [schema_dir: schema_dir, aliases: aliases]},
-      {BrodGroupSubscriberExample.Subscriber, subscriber_config}
+      {BrodGroupSubscriberExample.AvroSchemaLoader, [schema_dir: schema_dir, aliases: aliases]},
+      {BrodGroupSubscriberExample.KafkaOffsets, [tab_name: offsets_tab, file: offsets_path]},
+      {BrodGroupSubscriberExample.Subscriber, [subscriber_config: kafka_subscriber_config]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -53,16 +44,16 @@ defmodule BrodGroupSubscriberExample.Application do
     Supervisor.start_link(children, opts)
   end
 
-  @impl true
-  def stop(_state) do
-    case KafkaOffsets.close() do
-      {:error, reason} ->
-        Logger.error("Error closing offsets table #{inspect(reason)}")
-        :ok
-
-      :ok ->
-        :ok
-    end
-  end
+  # @impl true
+  # def stop(_state) do
+  #   case KafkaOffsets.close() do
+  #     {:error, reason} ->
+  #       Logger.error("Error closing offsets table #{inspect(reason)}")
+  #       :ok
+  #
+  #     :ok ->
+  #       :ok
+  #   end
+  # end
 
 end

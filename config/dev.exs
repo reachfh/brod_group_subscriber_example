@@ -13,16 +13,33 @@ config :brod_group_subscriber_example,
   state_dir: state_dir,
   data_dir: data_dir,
   cache_dir: cache_dir,
-  kafka_consumer: [
+  kafka_subscriber_config: %{
+    # Client id of the brod client (mandatory)
+    client: :client1,
+    # Consumer group ID which should be unique per kafka cluster (mandatory)
+    group_id: app_ext_name,
+    # Predefined set of topic names to join the group (mandatory)
     topics: [
       "foo",
     ],
-    group_id: app_ext_name,
+    # Data passed to `CbModule:init/2' when initializing subscriber.
+    # Optional, default :undefined
+    init_data: %{
+      # Mapping from Kafka topic to Avro subject/schema
+      subjects: %{
+        # "log_request" => "com.cogini.RequestLog"
+      },
+      offsets_tab: :kafka_offsets
+    },
+    # Type of message handled by callback module, :message (default) or :message_set
+    message_type: :message_set, # default is :message
+    # Config for group coordinator (optional)
     group_config: [
       offset_commit_policy: :consumer_managed, # default :commit_to_kafka_v2
       # offset_commit_interval_seconds: 5, # default 5
       # partition_assignment_strategy: :callback_implemented, # default :roundrobin_v2
     ],
+    # Config for partition consumer (optional)
     consumer_config: [
       begin_offset: :earliest, # default is :latest
       # offset_reset_policy: :reset_by_subscriber, # default
@@ -38,9 +55,8 @@ config :brod_group_subscriber_example,
       #  Maximum bytes to fetch in a batch of messages.
       # max_bytes: 1048576, # default 1048576, 1 MB
       max_bytes: 131_072, # default 1MB
-    ],
-    message_type: :message_set # default is :message
-  ]
+    ]
+  }
 
 config :brod,
   clients: [
@@ -75,7 +91,8 @@ config :logger,
   level: :debug
 
 config :logger, :console,
-  level: :info,
+  # level: :info,
+  level: :debug,
   # format: "$metadata[$level] $levelpad$message\n",
   format: {BrodGroupSubscriberExample.LoggerFormatter, :format},
   # metadata: :all

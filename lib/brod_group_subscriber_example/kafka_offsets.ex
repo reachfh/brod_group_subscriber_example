@@ -1,55 +1,69 @@
 defmodule BrodGroupSubscriberExample.KafkaOffsets do
   @moduledoc """
   Manage DETS table to keep track of Kafka offsets.
+
+  This is a GenServer to manage the lifecycle of the file, closing it properly on shutdown.
   """
+  use GenServer
+
   require Logger
 
-  @default_offsets_file "kafka_offsets.DETS"
+  @default_tab_name :kafka_offsets
 
-  @doc "Open offsets file"
-  @spec open_file(Keyword.t()) :: {:ok, :dets.tab_name()} | {:error, term()}
-  def open_file(args) do
-    state_dir = args[:state_dir]
-    file = args[:file] || @default_offsets_file
-    tab = args[:tab] || __MODULE__
-    path = to_charlist(Path.join(state_dir, file))
-
-    :dets.open_file(tab, file: path)
+  @spec start_link(Keyword.t(), Keyword.t()) :: {:ok, pid()} | {:error, term()}
+  def start_link(args, opts \\ []) do
+    GenServer.start_link(__MODULE__, args, opts)
   end
 
-  def insert(objects) do
-    insert(__MODULE__, objects)
+  @impl true
+  def init(args) do
+    Logger.debug("init: #{inspect(args)}")
+
+    Process.flag(:trap_exit, true)
+
+    tab_name = args[:tab_name] || @default_tab_name
+    file =
+      case Keyword.fetch(args, :file) do
+        {:ok, value} ->
+          value
+        :error ->
+          "/tmp/#{tab_name}.DETS"
+      end
+
+    Logger.info("Opening DETS table #{tab_name} file #{file}")
+    {:ok, tab} = :dets.open_file(tab_name, file: to_charlist(file))
+
+    state = %{
+      tab: tab
+    }
+
+    {:ok, state}
   end
 
-  def insert(tab, objects) do
-    :dets.insert(tab, objects)
-  end
-
-  @doc "Open offsets table"
-  @spec close(:dets.tab_name()) :: :ok | {:error, term()}
-  def close(tab) do
+  @impl true
+  def terminate(reason, state) do
+    tab = state.tab
+    Logger.debug("Closing DETS table #{tab} #{reason}")
     :dets.close(tab)
   end
 
-  def close do
-    close(__MODULE__)
-  end
+  # :dets.insert(tab, objects)
 
-  @spec get_offsets() :: {:ok, list()} | {:error, term()}
-  def get_offsets do
-    get_offsets(__MODULE__)
-  end
+  # @spec get_offsets() :: {:ok, list()} | {:error, term()}
+  # def get_offsets do
+  #   get_offsets(__MODULE__)
+  # end
 
-  @spec get_offsets(:dets.tab_name()) :: {:ok, list()} | {:error, term()}
-  def get_offsets(tab) do
-    reduce_tab(:dets.match_object(tab, :_, 500), [])
-  end
+  # @spec get_offsets(:dets.tab_name()) :: {:ok, list()} | {:error, term()}
+  # def get_offsets(tab) do
+  #   reduce_tab(:dets.match_object(tab, :_, 500), [])
+  # end
 
-  def reduce_tab({:error, reason}, _acc), do: {:error, reason}
+  # def reduce_tab({:error, reason}, _acc), do: {:error, reason}
 
-  def reduce_tab(:"$end_of_table", acc), do: {:ok, Enum.reverse(acc)}
+  # def reduce_tab(:"$end_of_table", acc), do: {:ok, Enum.reverse(acc)}
 
-  def reduce_tab({match, continuation}, acc) do
-    reduce_tab(:dets.match_object(continuation), [match | acc])
-  end
+  # def reduce_tab({match, continuation}, acc) do
+  #   reduce_tab(:dets.match_object(continuation), [match | acc])
+  # end
 end
