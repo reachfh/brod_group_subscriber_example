@@ -41,7 +41,13 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   def init(init_info, init_data) do
     Logger.debug("init: init_info: #{inspect(init_info)}, init_data: #{inspect(init_data)}")
 
-    {:ok, Map.put(init_info, :init_data, init_data)}
+    state =
+      init_info
+      |> Map.put(:init_data, init_data)
+      # Cache decoders by Avro schema reference
+      |> Map.put(:decoders, %{})
+
+    {:ok, state}
   end
 
   # The proto of handle_message specifies kafka_message, but we have kafka_message_set
@@ -53,16 +59,11 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   def handle_message(kafka_message_set(messages: messages, high_wm_offset: high_wm_offset), state) do
     %{topic: topic, partition: partition, init_data: init_data} = state
 
-    # Mapping from Kafka topic to Avro subject/schema
-    # subjects: init_data[:subjects] || %{},
-
-    # Cache of decoders by Avro schema reference
-    # decoders: %{}
-
     Logger.debug("Processing message_set #{topic} #{partition} #{high_wm_offset}")
     # Metrics.inc([:records], [topic: topic], length(messages))
 
     offsets_tab = init_data[:offsets_tab]
+
     # Mapping from Kafka topic to Avro subject/schema
     subject = init_data[:subjects][topic]
 
@@ -85,10 +86,10 @@ defmodule BrodGroupSubscriberExample.Subscriber do
             {:ok, record} = AvroSchema.decode(bin, decoder)
             {[record | acc], state}
 
-            # {:error, :unknown_tag} ->
-            #   Metrics.inc([:records, :error], topic: topic)
-            #   {:ok, encoded} = encode_error(message, "unknown_tag", es_config)
-            #   {[encoded | acc], state}
+            {:error, :unknown_tag} ->
+              # Metrics.inc([:records, :error], topic: topic)
+              # {:ok, encoded} = encode_error(message, "unknown_tag", es_config)
+              {[value | acc], state}
         end
       end)
 
@@ -104,6 +105,49 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(high_wm_offset)})
 
     {:ok, :ack, state}
+  end
+
+  def handle_message(topic, partition, message, state) do
+    kafka_message(offset: offset, key: key, value: value) = message
+    Logger.info("#{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
+
+    init_data = state.init_data
+
+    offsets_tab = init_data[:offsets_tab]
+
+    # Mapping from Kafka topic to Avro subject/schema
+    subject = init_data[:subjects][topic]
+
+    case AvroSchema.untag(value) do
+      {:ok, {{:confluent, regid}, bin}} ->
+        {decoder, state} = get_decoder(regid, state)
+        {:ok, record} = AvroSchema.decode(bin, decoder)
+
+        Logger.info("record: #{inspect(record)}")
+
+        Logger.debug("Saving offset #{inspect(topic)} #{partition} #{offset}")
+        :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
+
+        {:ok, :ack, state}
+
+      {:ok, {{:avro, fp}, bin}} ->
+        # fp_hex = Base.encode16(fp, case: :lower)
+        # Logger.debug("Message tag Avro #{subject} #{fp_hex}")
+        {decoder, state} = get_decoder({subject, fp}, state)
+        {:ok, record} = AvroSchema.decode(bin, decoder)
+        Logger.info("record: #{inspect(record)}")
+        {:ok, :ack, state}
+
+        Logger.debug("Saving offset #{inspect(topic)} #{partition} #{offset}")
+        :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
+
+      {:error, :unknown_tag} ->
+        # Metrics.inc([:records, :error], topic: topic)
+        Logger.error("unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
+
+        {:ok, :ack, state}
+    end
+
   end
 
   # Get Avro decoder and cache in state

@@ -32,7 +32,7 @@ config :brod_group_subscriber_example,
       offsets_tab: :kafka_offsets
     },
     # Type of message handled by callback module, :message (default) or :message_set
-    message_type: :message_set, # default is :message
+    # message_type: :message_set, # default :message
     # Config for group coordinator (optional)
     group_config: [
       offset_commit_policy: :consumer_managed, # default :commit_to_kafka_v2
