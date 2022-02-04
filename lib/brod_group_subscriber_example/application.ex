@@ -26,10 +26,6 @@ defmodule BrodGroupSubscriberExample.Application do
     kafka_subscriber_config = Application.get_env(@app, :kafka_subscriber_config)
     offsets_tab = kafka_subscriber_config[:init_data][:offsets_tab]
     offsets_path = Path.join(state_dir, "#{offsets_tab}.DETS")
-    # {:ok, _offsets_tab} = :dets.open_file(offsets_tab, file: offsets_path)
-
-    # offsets_data = :dets.foldl(fn {key, value}, acc -> [{key, value} | acc] end, [], offsets_tab)
-    # Logger.debug("Kafka offsets: #{inspect(offsets_data, limit: :infinity)}")
 
     children = [
       {AvroSchema, [cache_dir: cache_dir]},
