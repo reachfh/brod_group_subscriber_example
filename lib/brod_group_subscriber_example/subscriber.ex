@@ -10,6 +10,8 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
   require Record
 
+  alias BrodGroupSubscriberExample.Telemetry
+
   Record.defrecord(
     :kafka_message,
     Record.extract(:kafka_message, from_lib: "brod/include/brod.hrl")
@@ -113,8 +115,18 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
   def handle_message(topic, partition, message, state) do
     kafka_message(offset: offset, key: key, value: value) = message
+
+    metadata = %{
+      topic: topic,
+      partition: partition,
+      offset: offset,
+      key: key,
+      value: value,
+    }
+
+    start_time = Telemetry.start(:handle_message, metadata)
+
     Logger.info("#{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
-    :telemetry.execute([:record], %{count: 1}, %{topic: topic, partition: partition})
 
     %{subjects: subjects, dead_letter_queues: dlq, offsets_tab: offsets_tab, client: client} =
       state.init_data
@@ -132,6 +144,8 @@ defmodule BrodGroupSubscriberExample.Subscriber do
         Logger.debug("Saving offset #{inspect(topic)} #{partition} #{offset}")
         :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
 
+        Telemetry.stop(:handle_message, start_time, metadata, %{tag: :confluent})
+
         {:ok, :ack, state}
 
       {:ok, {{:avro, fp}, bin}} ->
@@ -140,19 +154,24 @@ defmodule BrodGroupSubscriberExample.Subscriber do
         {decoder, state} = get_decoder({subject, fp}, state)
         {:ok, record} = AvroSchema.decode(bin, decoder)
         Logger.info("record: #{inspect(record)}")
-        {:ok, :ack, state}
 
         Logger.debug("Saving offset #{inspect(topic)} #{partition} #{offset}")
         :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
 
+        Telemetry.stop(:handle_message, start_time, metadata, %{tag: :avro})
+
+        {:ok, :ack, state}
+
       {:error, :unknown_tag} ->
-        :telemetry.execute([:record, :error], %{count: 1}, %{topic: topic, partition: partition})
         Logger.error(
           "unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}"
         )
 
         {:ok, offset} = :brod.produce_sync_offset(client, dlq[topic], :random, key, value)
         Logger.debug(fn -> "Produced #{key} to #{topic} offset #{offset}" end)
+
+        Telemetry.stop(:handle_message, start_time, metadata, %{tag: :none})
+
         {:ok, :ack, state}
     end
   end
