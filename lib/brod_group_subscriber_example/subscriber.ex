@@ -43,6 +43,19 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   #       error
   #   end
 
+  # backoff_threshold = config[:backoff_threshold] || 300
+  # backoff_multiple = config[:backoff_multiple] || 10
+  # backoff_duration =
+  #   if took > backoff_threshold do
+  #     backoff = backoff_multiple * took
+  #     Logger.warning("Backoff #{backoff}")
+  #     Metrics.inc([:records, :throttle], [topic: topic], count)
+  #     Process.sleep(backoff)
+  #     backoff
+  #   else
+  #     0
+  #   end
+
   @spec child_spec(Keyword.t()) :: map()
   def child_spec(config) do
     Logger.debug("child_spec: #{inspect(config)}")
@@ -319,6 +332,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     {:ok, now_datetime} = DateTime.now("Etc/UTC")
     DateTime.diff(now_datetime, datetime)
   end
+
 
   defp to_integer(value) when is_integer(value), do: value
   defp to_integer(value) when is_binary(value), do: String.to_integer(value)
