@@ -12,7 +12,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
   require Record
 
-  alias BrodGroupSubscriberExample.Telemetry
+  # alias BrodGroupSubscriberExample.Telemetry
 
   require OpenTelemetry.Tracer, as: Tracer
 
@@ -32,6 +32,16 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   # )
 
   # use Retry
+  # result =
+  #   retry with: linear_backoff(backoff, 2) |> Stream.take(max_tries) do
+  #     Elastix.Bulk.post_raw(elastic_url, data, elastix_options)
+  #   after
+  #     result -> result
+  #   else
+  #     error ->
+  #       Logger.debug("Error: #{inspect(error)}")
+  #       error
+  #   end
 
   @spec child_spec(Keyword.t()) :: map()
   def child_spec(config) do
