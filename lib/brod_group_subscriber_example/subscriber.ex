@@ -12,6 +12,8 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
   alias BrodGroupSubscriberExample.Telemetry
 
+  require OpenTelemetry.Tracer, as: Tracer
+
   Record.defrecord(
     :kafka_message,
     Record.extract(:kafka_message, from_lib: "brod/include/brod.hrl")
@@ -112,28 +114,51 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     {:ok, :ack, state}
   end
 
-  # def handle_message(message, %{topic: "__consumer_offsets"} = state) do
   def handle_message(message, state) do
     %{partition: partition, topic: topic} = state
-
     kafka_message(offset: offset, key: key, value: value) = message
 
-    metadata = %{topic: topic, partition: partition}
-    measurements = %{offset: offset, key: key, value: value}
-    start_time = Telemetry.start(:handle_message, metadata, measurements)
-    Telemetry.event(:lag, %{duration: get_lag(message)}, metadata)
+    lag = get_lag(message)
+    attributes = [topic: topic, partition: partition, offset: offset, key: key, lag: lag]
+    Tracer.with_span :handle_message, %{attributes: attributes} do
+      Tracer.add_event(:process_message, [])
+      Logger.debug("topic #{topic} part #{partition} #{inspect(message)}")
 
-    Logger.info("topic #{topic} part #{partition} #{inspect(message)}")
+      Tracer.with_span :kafka_produce do
+        %{dead_letter_queues: dlq, client: client} = state.init_data
+        dlq_topic = dlq[topic]
 
-    # # TODO: maybe put info into kafka headers, e.g. original offset, trace id
-    %{dead_letter_queues: dlq, client: client} = state.init_data
-    dlq_topic = dlq[topic]
-    {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
-    Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
+        {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
+        Tracer.add_event(:produce_dlq, topic: topic, key: key, offset: offset)
 
-    Telemetry.stop(:handle_message, start_time, metadata, measurements)
-    {:ok, :ack, state}
+        Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
+      end
+
+      {:ok, :ack, state}
+    end
   end
+
+  # def handle_message(message, state) do
+  #   %{partition: partition, topic: topic} = state
+  #
+  #   kafka_message(offset: offset, key: key, value: value) = message
+  #
+  #   metadata = %{topic: topic, partition: partition}
+  #   measurements = %{offset: offset, key: key, value: value}
+  #   start_time = Telemetry.start(:handle_message, metadata, measurements)
+  #   Telemetry.event(:lag, %{duration: get_lag(message)}, metadata)
+  #
+  #   Logger.info("topic #{topic} part #{partition} #{inspect(message)}")
+  #
+  #   # # TODO: maybe put info into kafka headers, e.g. original offset, trace id
+  #   %{dead_letter_queues: dlq, client: client} = state.init_data
+  #   dlq_topic = dlq[topic]
+  #   {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
+  #   Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
+  #
+  #   Telemetry.stop(:handle_message, start_time, metadata, measurements)
+  #   {:ok, :ack, state}
+  # end
 
   # def handle_message(message, state) do
   #   # kafka_protocol/include/kpro_public.hrl
