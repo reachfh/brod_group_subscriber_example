@@ -22,3 +22,16 @@ be found at <https://hexdocs.pm/brod_group_subscriber_example>.
 ```elixir
 :brod.produce_sync_offset(:client1, "foo", :random, "the key", "the value")
 ```
+
+## TODO
+
+* Extract trace context from message kafka headers and use in dlc send
+* Use link?
+* service.name is wrong
+* Log time is wrong (very large)
+* set_status is not working?
+
+* Use retries for error handling
+* Maybe sleep
+
+* Wrap up in opinionated library

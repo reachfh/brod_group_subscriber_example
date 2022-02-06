@@ -6,6 +6,8 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   # https://github.com/kafka2beam/brod/blob/master/src/brod_group_subscriber_v2.erl
   @behaviour :brod_group_subscriber_v2
 
+  @app Mix.Project.config[:app]
+
   require Logger
 
   require Record
@@ -114,28 +116,74 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     {:ok, :ack, state}
   end
 
+  # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
+
   def handle_message(message, state) do
     %{partition: partition, topic: topic} = state
-    kafka_message(offset: offset, key: key, value: value) = message
+    kafka_message(offset: offset, key: key, value: value, ts: ts, headers: headers) = message
+    %{dead_letter_queues: dlq, client: client} = state.init_data
+    Logger.debug("#{inspect(message)} #{inspect(state)}")
+
+    ctx = :otel_propagator_text_map.extract(headers)
+    Logger.debug("trace context from kafka headers: #{inspect(ctx)}")
 
     lag = get_lag(message)
-    attributes = [topic: topic, partition: partition, offset: offset, key: key, lag: lag]
-    Tracer.with_span :handle_message, %{attributes: attributes} do
-      Tracer.add_event(:process_message, [])
+    attributes = [
+      offset: offset, ts: ts, lag: lag,
+    ] ++ messaging_attributes_process(message, state)
+
+    Tracer.with_span "#{topic} process", %{kind: :consumer, attributes: attributes} do
       Logger.debug("topic #{topic} part #{partition} #{inspect(message)}")
 
-      Tracer.with_span :kafka_produce do
-        %{dead_letter_queues: dlq, client: client} = state.init_data
-        dlq_topic = dlq[topic]
+      dlq_topic = dlq[topic]
+      Tracer.set_status({:error, ""})
+      send_attributes = messaging_attributes_send(dlq_topic, key, value)
+      Tracer.with_span "#{dlq_topic} send", %{kind: :producer, attributes: send_attributes} do
 
+        # TODO: set header
+        produce_headers = :otel_propagator_text_map.inject([])
+        Logger.debug("produce_headers: #{inspect(produce_headers)}")
         {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
+
         Tracer.add_event(:produce_dlq, topic: topic, key: key, offset: offset)
+        Tracer.set_attribute("offset", offset)
 
         Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
+
+        Tracer.set_status({:ok, ""})
       end
 
       {:ok, :ack, state}
     end
+  end
+
+  def messaging_attributes_process(message, state) do
+    kafka_message(key: key, value: value) = message
+    %{partition: partition, topic: topic, group_id: group_id} = state
+     [
+      {"service.name", @app},
+      {"messaging.operation", "process"}, # or maybe "receive"
+      {"messaging.system", "kafka"},
+      {"messaging.destination_kind", "topic"},
+      {"messaging.kafka.message_key", key},
+      {"messaging.message_payload_size_bytes", byte_size(value)},
+      {"messaging.destination", topic},
+      {"messaging.kafka.partition", partition},
+      {"messaging.kafka.consumer_group", group_id},
+    ]
+  end
+
+  def messaging_attributes_send(topic, key, value) do
+     [
+      {"service.name", @app},
+      {"peer.service", @app},
+      {"messaging.system", "kafka"},
+      {"messaging.destination_kind", "topic"},
+      {"messaging.destination", topic},
+      {"messaging.kafka.message_key", key},
+      {"messaging.message_payload_size_bytes", byte_size(value)},
+      {"messaging.operation", "send"},
+    ]
   end
 
   # def handle_message(message, state) do
@@ -229,14 +277,6 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     end
   end
 
-  defp get_lag(message) do
-    kafka_message(ts: ts) = message
-    {:ok, datetime} = DateTime.from_unix(ts, :microsecond)
-    datetime = DateTime.truncate(datetime, :second)
-    {:ok, now_datetime} = DateTime.now("Etc/UTC")
-    DateTime.diff(now_datetime, datetime)
-  end
-
   @impl :brod_group_subscriber_v2
   @spec get_committed_offset(term(), :brod.topic(), :brod.partition()) ::
           {:ok, :brod.offset() | :undefined}
@@ -256,6 +296,18 @@ defmodule BrodGroupSubscriberExample.Subscriber do
       _ ->
         :undefined
     end
+  end
+
+  @spec get_lag(non_neg_integer() | tuple()) :: non_neg_integer()
+  defp get_lag(kafka_message(ts: ts)) do
+    get_lag(ts)
+  end
+
+  defp get_lag(ts) when is_integer(ts) do
+    {:ok, datetime} = DateTime.from_unix(ts, :millisecond)
+    datetime = DateTime.truncate(datetime, :second)
+    {:ok, now_datetime} = DateTime.now("Etc/UTC")
+    DateTime.diff(now_datetime, datetime)
   end
 
   defp to_integer(value) when is_integer(value), do: value
