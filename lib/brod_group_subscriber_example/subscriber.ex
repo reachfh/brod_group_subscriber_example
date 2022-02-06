@@ -112,55 +112,79 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     {:ok, :ack, state}
   end
 
+  # def handle_message(message, %{topic: "__consumer_offsets"} = state) do
   def handle_message(message, state) do
-    # kafka_protocol/include/kpro_public.hrl
-    kafka_message(offset: offset, key: key, value: value) = message
     %{partition: partition, topic: topic} = state
+
+    kafka_message(offset: offset, key: key, value: value) = message
 
     metadata = %{topic: topic, partition: partition}
     measurements = %{offset: offset, key: key, value: value}
-
     start_time = Telemetry.start(:handle_message, metadata, measurements)
-
     Telemetry.event(:lag, %{duration: get_lag(message)}, metadata)
 
-    Logger.info("#{topic} part #{partition} offset #{offset} #{inspect(key)} #{inspect(value)}")
+    Logger.info("topic #{topic} part #{partition} #{inspect(message)}")
 
-    %{subjects: subjects, dead_letter_queues: dlq, client: client} = state.init_data
-    # Get Avro subject/schema for topic
-    subject = subjects[topic]
+    # # TODO: maybe put info into kafka headers, e.g. original offset, trace id
+    %{dead_letter_queues: dlq, client: client} = state.init_data
+    dlq_topic = dlq[topic]
+    {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
+    Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
 
-    case AvroSchema.untag(value) do
-      {:ok, {{:confluent, regid}, bin}} ->
-        {decoder, state} = get_decoder(regid, state)
-        {:ok, record} = AvroSchema.decode(bin, decoder)
-
-        Logger.debug("record: #{inspect(record)}")
-
-        Telemetry.stop(:handle_message, start_time, metadata, measurements)
-        {:ok, :ack, state}
-
-      {:ok, {{:avro, fp}, bin}} ->
-        {decoder, state} = get_decoder({subject, fp}, state)
-        {:ok, record} = AvroSchema.decode(bin, decoder)
-        Logger.info("record: #{inspect(record)}")
-
-        Telemetry.stop(:handle_message, start_time, metadata, measurements)
-        {:ok, :ack, state}
-
-      {:error, :unknown_tag} ->
-        Logger.error("unknown_tag: #{topic} part #{partition} offset #{offset} key #{inspect(key)} #{inspect(value)}")
-
-        # TODO: maybe put info into kafka headers, e.g. original offset, trace id
-        dlq_topic = dlq[topic]
-        {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
-        Logger.debug(fn -> "Produced #{key} to #{dlq_topic} offset #{offset}" end)
-
-        Telemetry.stop(:handle_message, start_time, metadata, measurements)
-        {:ok, :ack, state}
-    end
+    Telemetry.stop(:handle_message, start_time, metadata, measurements)
+    {:ok, :ack, state}
   end
 
+  # def handle_message(message, state) do
+  #   # kafka_protocol/include/kpro_public.hrl
+  #   kafka_message(offset: offset, key: key, value: value) = message
+  #   %{partition: partition, topic: topic} = state
+  #
+  #   metadata = %{topic: topic, partition: partition}
+  #   measurements = %{offset: offset, key: key, value: value}
+  #
+  #   start_time = Telemetry.start(:handle_message, metadata, measurements)
+  #
+  #   Telemetry.event(:lag, %{duration: get_lag(message)}, metadata)
+  #
+  #   Logger.info("#{topic} part #{partition} offset #{offset} #{inspect(key)} #{inspect(value)}")
+  #
+  #   %{subjects: subjects, dead_letter_queues: dlq, client: client} = state.init_data
+  #   # Get Avro subject/schema for topic
+  #   subject = subjects[topic]
+  #
+  #   case AvroSchema.untag(value) do
+  #     {:ok, {{:confluent, regid}, bin}} ->
+  #       {decoder, state} = get_decoder(regid, state)
+  #       {:ok, record} = AvroSchema.decode(bin, decoder)
+  #
+  #       Logger.debug("record: #{inspect(record)}")
+  #
+  #       Telemetry.stop(:handle_message, start_time, metadata, measurements)
+  #       {:ok, :ack, state}
+  #
+  #     {:ok, {{:avro, fp}, bin}} ->
+  #       {decoder, state} = get_decoder({subject, fp}, state)
+  #       {:ok, record} = AvroSchema.decode(bin, decoder)
+  #       Logger.info("record: #{inspect(record)}")
+  #
+  #       Telemetry.stop(:handle_message, start_time, metadata, measurements)
+  #       {:ok, :ack, state}
+  #
+  #     {:error, :unknown_tag} ->
+  #       Logger.error("unknown_tag: #{topic} part #{partition} offset #{offset} key #{inspect(key)} #{inspect(value)}")
+  #
+  #       # TODO: maybe put info into kafka headers, e.g. original offset, trace id
+  #       dlq_topic = dlq[topic]
+  #       {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
+  #       Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
+  #
+  #       Telemetry.stop(:handle_message, start_time, metadata, measurements)
+  #       {:ok, :ack, state}
+  #   end
+  # end
+
+  # @doc "Handle ack from async produce"
   # def handle_info(brod_produce_reply(call_ref: call_ref, result: result), state) do
   #   Logger.info("#{inspect(call_ref)} #{inspect(result)}")
   #   {:noreply, state}

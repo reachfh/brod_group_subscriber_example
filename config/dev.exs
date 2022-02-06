@@ -20,7 +20,7 @@ config :brod_group_subscriber_example,
     group_id: app_ext_name,
     # Predefined set of topic names to join the group (mandatory)
     topics: [
-      "foo",
+      "foo"
     ],
     # Data passed to `CbModule:init/2' when initializing subscriber.
     # Optional, default :undefined
@@ -33,7 +33,7 @@ config :brod_group_subscriber_example,
         "foo" => "foo-dlq"
       },
       offsets_tab: :kafka_offsets,
-      client: :client1,
+      client: :client1
     },
     # Type of message handled by callback module, :message (default) or :message_set
     # message_type: :message_set, # default :message
@@ -46,7 +46,7 @@ config :brod_group_subscriber_example,
     ],
     # Config for partition consumer (optional)
     consumer_config: [
-      begin_offset: :earliest, # default is :latest
+      # begin_offset: :earliest, # default is :latest
       # offset_reset_policy: :reset_by_subscriber, # default
       # offset_reset_policy: :reset_to_earliest,
       # The window size (number of messages) allowed to fetch-ahead
@@ -107,7 +107,6 @@ config :brod,
       ]
     ]
   ]
-
 
 config :setup,
   home: '.',
