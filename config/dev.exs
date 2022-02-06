@@ -37,9 +37,10 @@ config :brod_group_subscriber_example,
     },
     # Type of message handled by callback module, :message (default) or :message_set
     # message_type: :message_set, # default :message
+    message_type: :message,
     # Config for group coordinator (optional)
     group_config: [
-      offset_commit_policy: :consumer_managed, # default :commit_to_kafka_v2
+      # offset_commit_policy: :consumer_managed, # default :commit_to_kafka_v2
       # offset_commit_interval_seconds: 5, # default 5
       # partition_assignment_strategy: :callback_implemented, # default :roundrobin_v2
     ],
@@ -47,9 +48,9 @@ config :brod_group_subscriber_example,
     consumer_config: [
       begin_offset: :earliest, # default is :latest
       # offset_reset_policy: :reset_by_subscriber, # default
-      offset_reset_policy: :reset_to_earliest,
+      # offset_reset_policy: :reset_to_earliest,
       # The window size (number of messages) allowed to fetch-ahead
-      prefetch_count: 1000, # default 10
+      # prefetch_count: 1000, # default 10
       # The total number of bytes allowed to fetch-ahead.
       # prefetch_bytes: 1024000, # default 102400, 100 KB
       # brod_consumer is greedy, it only stops fetching more messages in
@@ -58,7 +59,7 @@ config :brod_group_subscriber_example,
 
       #  Maximum bytes to fetch in a batch of messages.
       # max_bytes: 1048576, # default 1048576, 1 MB
-      max_bytes: 131_072, # default 1MB
+      # max_bytes: 131_072, # default 1MB
     ]
   }
 

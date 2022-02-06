@@ -22,10 +22,10 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     Record.extract(:kafka_message_set, from_lib: "brod/include/brod.hrl")
   )
 
-  Record.defrecord(
-    :brod_produce_reply,
-    Record.extract(:brod_produce_reply, from_lib: "brod/include/brod.hrl")
-  )
+  # Record.defrecord(
+  #   :brod_produce_reply,
+  #   Record.extract(:brod_produce_reply, from_lib: "brod/include/brod.hrl")
+  # )
 
   # use Retry
 
@@ -68,8 +68,6 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     Logger.debug("Processing message_set #{topic} #{partition} #{high_wm_offset}")
     :telemetry.execute([:record], %{count: length(messages)}, %{topic: topic, partition: partition})
 
-    offsets_tab = init_data[:offsets_tab]
-
     # Mapping from Kafka topic to Avro subject/schema
     subject = init_data[:subjects][topic]
 
@@ -107,30 +105,28 @@ defmodule BrodGroupSubscriberExample.Subscriber do
       Logger.info("record: #{inspect(record)}")
     end
 
-    Logger.debug("Saving offset #{inspect(topic)} #{partition} #{high_wm_offset}")
-    :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(high_wm_offset)})
+    # offsets_tab = init_data[:offsets_tab]
+    # Logger.debug("Saving offset #{inspect(topic)} #{partition} #{high_wm_offset}")
+    # :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(high_wm_offset)})
 
     {:ok, :ack, state}
   end
 
-  def handle_message(topic, partition, message, state) do
+  def handle_message(message, state) do
+    # kafka_protocol/include/kpro_public.hrl
     kafka_message(offset: offset, key: key, value: value) = message
+    %{partition: partition, topic: topic} = state
 
-    metadata = %{
-      topic: topic,
-      partition: partition,
-      offset: offset,
-      key: key,
-      value: value,
-    }
+    metadata = %{topic: topic, partition: partition}
+    measurements = %{offset: offset, key: key, value: value}
 
-    start_time = Telemetry.start(:handle_message, metadata)
+    start_time = Telemetry.start(:handle_message, metadata, measurements)
 
-    Logger.info("#{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}")
+    Telemetry.event(:lag, %{duration: get_lag(message)}, metadata)
 
-    %{subjects: subjects, dead_letter_queues: dlq, offsets_tab: offsets_tab, client: client} =
-      state.init_data
+    Logger.info("#{topic} part #{partition} offset #{offset} #{inspect(key)} #{inspect(value)}")
 
+    %{subjects: subjects, dead_letter_queues: dlq, client: client} = state.init_data
     # Get Avro subject/schema for topic
     subject = subjects[topic]
 
@@ -139,39 +135,28 @@ defmodule BrodGroupSubscriberExample.Subscriber do
         {decoder, state} = get_decoder(regid, state)
         {:ok, record} = AvroSchema.decode(bin, decoder)
 
-        Logger.info("record: #{inspect(record)}")
+        Logger.debug("record: #{inspect(record)}")
 
-        Logger.debug("Saving offset #{inspect(topic)} #{partition} #{offset}")
-        :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
-
-        Telemetry.stop(:handle_message, start_time, metadata, %{tag: :confluent})
-
+        Telemetry.stop(:handle_message, start_time, metadata, measurements)
         {:ok, :ack, state}
 
       {:ok, {{:avro, fp}, bin}} ->
-        # fp_hex = Base.encode16(fp, case: :lower)
-        # Logger.debug("Message tag Avro #{subject} #{fp_hex}")
         {decoder, state} = get_decoder({subject, fp}, state)
         {:ok, record} = AvroSchema.decode(bin, decoder)
         Logger.info("record: #{inspect(record)}")
 
-        Logger.debug("Saving offset #{inspect(topic)} #{partition} #{offset}")
-        :ok = :dets.insert(offsets_tab, {{topic, partition}, to_integer(offset)})
-
-        Telemetry.stop(:handle_message, start_time, metadata, %{tag: :avro})
-
+        Telemetry.stop(:handle_message, start_time, metadata, measurements)
         {:ok, :ack, state}
 
       {:error, :unknown_tag} ->
-        Logger.error(
-          "unknown_tag: #{inspect(topic)} #{partition} #{offset} #{inspect(key)} #{inspect(value)}"
-        )
+        Logger.error("unknown_tag: #{topic} part #{partition} offset #{offset} key #{inspect(key)} #{inspect(value)}")
 
-        {:ok, offset} = :brod.produce_sync_offset(client, dlq[topic], :random, key, value)
-        Logger.debug(fn -> "Produced #{key} to #{topic} offset #{offset}" end)
+        # TODO: maybe put info into kafka headers, e.g. original offset, trace id
+        dlq_topic = dlq[topic]
+        {:ok, offset} = :brod.produce_sync_offset(client, dlq_topic, :random, key, value)
+        Logger.debug(fn -> "Produced #{key} to #{dlq_topic} offset #{offset}" end)
 
-        Telemetry.stop(:handle_message, start_time, metadata, %{tag: :none})
-
+        Telemetry.stop(:handle_message, start_time, metadata, measurements)
         {:ok, :ack, state}
     end
   end
@@ -182,6 +167,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   # end
 
   # Get Avro decoder and cache in state
+  # @spec get_decoder(binary(), map()) ::
   defp get_decoder(reg, %{decoders: decoders} = state) do
     case Map.fetch(decoders, reg) do
       {:ok, decoder} ->
@@ -195,11 +181,11 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   end
 
   defp get_lag(message) do
-    kafka_message(ts: last_ts) = message
-    {:ok, last_datetime} = DateTime.from_unix(last_ts, :microsecond)
-    last_datetime = DateTime.truncate(last_datetime, :second)
+    kafka_message(ts: ts) = message
+    {:ok, datetime} = DateTime.from_unix(ts, :microsecond)
+    datetime = DateTime.truncate(datetime, :second)
     {:ok, now_datetime} = DateTime.now("Etc/UTC")
-    DateTime.diff(now_datetime, last_datetime)
+    DateTime.diff(now_datetime, datetime)
   end
 
   @impl :brod_group_subscriber_v2

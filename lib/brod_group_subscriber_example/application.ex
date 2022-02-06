@@ -27,6 +27,8 @@ defmodule BrodGroupSubscriberExample.Application do
     offsets_tab = kafka_subscriber_config[:init_data][:offsets_tab]
     offsets_path = Path.join(state_dir, "#{offsets_tab}.DETS")
 
+    Logger.info("kafka_subscriber_config: #{inspect(kafka_subscriber_config)}")
+
     children = [
       {AvroSchema, [cache_dir: cache_dir]},
       {BrodGroupSubscriberExample.AvroSchemaLoader, [schema_dir: schema_dir, aliases: aliases]},
