@@ -19,3 +19,6 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/brod_group_subscriber_example>.
 
+```elixir
+:brod.produce_sync_offset(:client1, "foo", :random, "the key", "the value")
+```
