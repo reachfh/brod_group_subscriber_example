@@ -115,10 +115,10 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
         end
       end
 
-      # def process_message(message, state) do
-      #   # Log.info("#{inspect(message)} #{inspect(state)}")
-      #   {:ok, state}
-      # end
+      def process_message(message, state) do
+        Log.info("#{inspect(message)} #{inspect(state)}")
+        {:ok, state}
+      end
 
       defoverridable SubscriberBase
 
@@ -183,6 +183,24 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
         {:ok, decoder} = AvroSchema.make_decoder(schema)
         {decoder, %{state | decoders: Map.put(decoders, reg, decoder)}}
     end
+  end
+
+  # TODO: this is not friendly to tracing
+  @spec backoff(non_neg_integer(), map()) :: non_neg_integer()
+  def backoff(took, %{backoff_threshold: backoff_threshold} = config) do
+    backoff_multiple = config[:backoff_multiple] || 10
+    if took > backoff_threshold do
+      backoff = backoff_multiple * took
+      Logger.warning("Backoff #{backoff}")
+      Process.sleep(backoff)
+      backoff
+    else
+      0
+    end
+  end
+
+  def backoff(_took, _config) do
+    0
   end
 
 end
