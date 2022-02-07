@@ -28,10 +28,13 @@ be found at <https://hexdocs.pm/brod_group_subscriber_example>.
 * Extract trace context from message kafka headers and use in dlc send
 * Use link?
 * service.name is wrong
+  Set service.name in span?
+
+      # {"service.name", @app},
+      # {"peer.service", @app},
+
 * Log time is wrong (very large)
 * set_status is not working?
 
 * Use retries for error handling
 * Maybe sleep
-
-* Wrap up in opinionated library
