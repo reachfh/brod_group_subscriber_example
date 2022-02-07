@@ -39,7 +39,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
 
   @impl SubscriberBase
   def process_message(message, state) do
-    Logger.debug("#{@app} message: #{inspect(message)} #{inspect(state)}")
+    Logger.info("#{@app} message: #{inspect(message)} #{inspect(state)}")
 
     value = message[:value]
 
