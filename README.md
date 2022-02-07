@@ -15,6 +15,11 @@ def deps do
 end
 ```
 
+```shell
+brew info kafka
+brew services start kafka
+```
+
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/brod_group_subscriber_example>.
