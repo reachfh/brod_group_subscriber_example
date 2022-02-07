@@ -33,7 +33,9 @@ config :brod_group_subscriber_example,
         "foo" => "foo-dlq"
       },
       offsets_tab: :kafka_offsets,
-      client: :client1
+      client: :client1,
+      # backoff_threshold: 300,
+      # backoff_multiple: 10,
     },
     # Type of message handled by callback module, :message (default) or :message_set
     # message_type: :message_set, # default :message

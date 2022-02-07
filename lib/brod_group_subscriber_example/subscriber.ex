@@ -24,19 +24,6 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   #       error
   #   end
 
-  # backoff_threshold = config[:backoff_threshold] || 300
-  # backoff_multiple = config[:backoff_multiple] || 10
-  # backoff_duration =
-  #   if took > backoff_threshold do
-  #     backoff = backoff_multiple * took
-  #     Logger.warning("Backoff #{backoff}")
-  #     Metrics.inc([:records, :throttle], [topic: topic], count)
-  #     Process.sleep(backoff)
-  #     backoff
-  #   else
-  #     0
-  #   end
-
   @impl SubscriberBase
   def process_message(message, state) do
     Logger.info("#{@app} message: #{inspect(message)} #{inspect(state)}")
@@ -46,7 +33,6 @@ defmodule BrodGroupSubscriberExample.Subscriber do
     case parse_value(value) do
       # {:error, reason} ->
       #   {:error, reason, state}
-
       {:ok, _parsed} ->
         {:ok, state}
     end
