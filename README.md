@@ -16,7 +16,8 @@ end
 ```
 
 ```shell
-brew info kafka
+brew install kafka
+brew services start zookeeper
 brew services start kafka
 ```
 
