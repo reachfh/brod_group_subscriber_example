@@ -131,10 +131,9 @@ config :logger, :console,
 config :opentelemetry, :resource,
   [
     # In production service.name is set based on OS env vars from Erlang release
-    service: %{
-      "name" => Mix.Project.config[:app],
-      "version" => Mix.Project.config[:version],
-    }
+    {"service.name", to_string(Mix.Project.config[:app])},
+    # {"service.namespace", "MyNamespace"},
+    {"service.version", Mix.Project.config[:version]},
   ]
 
 # config :opentelemetry, :processors,
