@@ -3,7 +3,7 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   Kafka consumer group subscriber example.
 
   """
-  @app Mix.Project.config[:app]
+  @app Mix.Project.config()[:app]
 
   require Logger
 
@@ -41,5 +41,4 @@ defmodule BrodGroupSubscriberExample.Subscriber do
   defp parse_value(value) do
     {:ok, value}
   end
-
 end

@@ -1,7 +1,7 @@
 defmodule BrodGroupSubscriberExample.Application do
   @moduledoc false
 
-  @app Mix.Project.config[:app]
+  @app Mix.Project.config()[:app]
 
   use Application
 
@@ -53,5 +53,4 @@ defmodule BrodGroupSubscriberExample.Application do
   #       :ok
   #   end
   # end
-
 end

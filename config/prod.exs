@@ -1,6 +1,6 @@
 import Config
 
-app_ext_name = String.replace(to_string(Mix.Project.config[:app]), "_", "-")
+app_ext_name = String.replace(to_string(Mix.Project.config()[:app]), "_", "-")
 state_dir = "/var/lib/#{app_ext_name}"
 data_dir = "#{state_dir}/data"
 log_dir = "/var/log/#{app_ext_name}"
@@ -26,9 +26,10 @@ config :brod_group_subscriber_example,
     # Optional, default :undefined
     init_data: %{
       # Mapping from Kafka topic to Avro subject/schema
-      subjects: %{
-        # "log_request" => "com.cogini.RequestLog"
-      },
+      subjects:
+        %{
+          # "log_request" => "com.cogini.RequestLog"
+        },
       dead_letter_queues: %{
         "foo" => "foo-dlq"
       },
@@ -36,7 +37,8 @@ config :brod_group_subscriber_example,
       client: :client1
     },
     # Type of message handled by callback module, :message (default) or :message_set
-    message_type: :message_set, # default is :message
+    # default is :message
+    message_type: :message_set,
     # Config for group coordinator (optional)
     group_config: [
       # offset_commit_policy: :consumer_managed, # default :commit_to_kafka_v2
@@ -65,15 +67,18 @@ config :brod_group_subscriber_example,
 config :brod,
   clients: [
     client1: [
-      endpoints: [localhost: 9092], # non ssl
+      # non ssl
+      endpoints: [localhost: 9092],
       # endpoints: [localhost: 9093], # ssl
-      allow_topic_auto_creation: false, # for safety, default true
+      # for safety, default true
+      allow_topic_auto_creation: false,
       # get_metadata_timeout_seconds: 5, # default 5
       # max_metadata_sock_retry: 2, # seems obsolete
       max_metadata_sock_retry: 5,
       # query_api_versions: false, # default true, set false for Kafka < 0.10
       # reconnect_cool_down_seconds: 1, # default 1
-      restart_delay_seconds: 10, # default 5
+      # default 5
+      restart_delay_seconds: 10,
       # ssl: [
       #   certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
       #   keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
@@ -89,13 +94,14 @@ config :brod,
         # See brod/src/brod_producer.erl
         # required_acks: -1,
         # ack_timeout: 10000,
-        partition_buffer_limit: 512, # default is 256
+        # default is 256
+        partition_buffer_limit: 512,
         # partition_onwire_limit: 1,
         # max_batch_size: 10_485_760, # default is 1M
         # buffered messages again upon receiving a error from kafka
         # by default, brod_producer will try to retry 3 times before crashing
         # max_retries: 3,
-        max_retries: 5,
+        max_retries: 5
         # By default, brod_producer will sleep for 0.5 second before trying to send
         # retry_backoff_ms: 500,
         # compression: :no_compression,
@@ -128,7 +134,8 @@ config :logger, :console,
   format: {BrodGroupSubscriberExample.LoggerFormatter, :format},
   # metadata: :all
   metadata: [:pid, :application, :module, :function, :line]
-  # metadata: [:pid, :module, :function, :line]
+
+# metadata: [:pid, :module, :function, :line]
 
 # SASL progress reports are logged at info level
 
@@ -160,90 +167,133 @@ config :logger, :console,
 #     :logger.add_handlers(:my_app)
 
 # Erlang logger config for app
-config :brod_group_subscriber_example, :logger,
-  [
-    {:handler, :crash_log, :logger_std_h, %{
-        level: :error,
-        filter_default: :stop,
-        filters: [
-          {:domain_filter, {&:logger_filters.domain/2, {:log, :equal, [:otp, :sasl]}}}
-        ],
-        config: %{
-          file: :filename.join(log_root, 'crash.log'),
-          max_no_bytes: 10_485_760,
-          max_no_files: 10,
-        },
-      }
-    },
-    {:handler, :notice_log, :logger_std_h, %{
-        level: :notice,
-        config: %{
-          file: :filename.join(log_root, 'notice.log'),
-          max_no_bytes: 10_485_760,
-          max_no_files: 10,
-        },
-        formatter: {:logger_formatter, %{
+config :brod_group_subscriber_example, :logger, [
+  {:handler, :crash_log, :logger_std_h,
+   %{
+     level: :error,
+     filter_default: :stop,
+     filters: [
+       {:domain_filter, {&:logger_filters.domain/2, {:log, :equal, [:otp, :sasl]}}}
+     ],
+     config: %{
+       file: :filename.join(log_root, 'crash.log'),
+       max_no_bytes: 10_485_760,
+       max_no_files: 10
+     }
+   }},
+  {:handler, :notice_log, :logger_std_h,
+   %{
+     level: :notice,
+     config: %{
+       file: :filename.join(log_root, 'notice.log'),
+       max_no_bytes: 10_485_760,
+       max_no_files: 10
+     },
+     formatter:
+       {:logger_formatter,
+        %{
           time_offset: 0,
           # template: [:time, '[', :level, '] ', :msg, '\n']
           template: [
-            :time, ' ', '[', :level, '] ', {:pid, [:pid, ' '], []},
-            {:mfa, [:mfa, ' '], []}, {:file, [:file], []}, {:line, [':', :line, ' '], []}, :msg, '\n'
+            :time,
+            ' ',
+            '[',
+            :level,
+            '] ',
+            {:pid, [:pid, ' '], []},
+            {:mfa, [:mfa, ' '], []},
+            {:file, [:file], []},
+            {:line, [':', :line, ' '], []},
+            :msg,
+            '\n'
           ]
         }}
-      }
-    },
-    {:handler, :error_log, :logger_std_h, %{
-        level: :error,
-        config: %{
-          file: :filename.join(log_root, 'error.log'),
-          max_no_bytes: 10_485_760,
-          max_no_files: 10,
-        },
-        formatter: {:logger_formatter, %{
+   }},
+  {:handler, :error_log, :logger_std_h,
+   %{
+     level: :error,
+     config: %{
+       file: :filename.join(log_root, 'error.log'),
+       max_no_bytes: 10_485_760,
+       max_no_files: 10
+     },
+     formatter:
+       {:logger_formatter,
+        %{
           time_offset: 0,
           # template: [:time, '[', :level, '] ', :msg, '\n']
           template: [
-            :time, ' ', '[', :level, '] ', {:pid, [:pid, ' '], []},
-            {:mfa, [:mfa, ' '], []}, {:file, [:file], []}, {:line, [':', :line, ' '], []}, :msg, '\n'
+            :time,
+            ' ',
+            '[',
+            :level,
+            '] ',
+            {:pid, [:pid, ' '], []},
+            {:mfa, [:mfa, ' '], []},
+            {:file, [:file], []},
+            {:line, [':', :line, ' '], []},
+            :msg,
+            '\n'
           ]
         }}
-      }
-    },
-    {:handler, :info_log, :logger_std_h, %{
-        level: :info,
-        config: %{
-          file: :filename.join(log_root, 'info.log'),
-          max_no_bytes: 10_485_760,
-          max_no_files: 10,
-        },
-        formatter: {:logger_formatter, %{
+   }},
+  {:handler, :info_log, :logger_std_h,
+   %{
+     level: :info,
+     config: %{
+       file: :filename.join(log_root, 'info.log'),
+       max_no_bytes: 10_485_760,
+       max_no_files: 10
+     },
+     formatter:
+       {:logger_formatter,
+        %{
           time_offset: 0,
           # template: [:time, '[', :level, '] ', :msg, '\n']
           template: [
-            :time, ' ', '[', :level, '] ', {:pid, [:pid, ' '], []},
-            {:mfa, [:mfa, ' '], []}, {:file, [:file], []}, {:line, [':', :line, ' '], []}, :msg, '\n'
+            :time,
+            ' ',
+            '[',
+            :level,
+            '] ',
+            {:pid, [:pid, ' '], []},
+            {:mfa, [:mfa, ' '], []},
+            {:file, [:file], []},
+            {:line, [':', :line, ' '], []},
+            :msg,
+            '\n'
           ]
         }}
-      }
-    },
-    {:handler, :debug_log, :logger_std_h, %{
-        level: :debug,
-        config: %{
-          file: :filename.join(log_root, 'debug.log'),
-          max_no_bytes: 10_485_760,
-          max_no_files: 10,
-        },
-        formatter: {:logger_formatter, %{
+   }},
+  {:handler, :debug_log, :logger_std_h,
+   %{
+     level: :debug,
+     config: %{
+       file: :filename.join(log_root, 'debug.log'),
+       max_no_bytes: 10_485_760,
+       max_no_files: 10
+     },
+     formatter:
+       {:logger_formatter,
+        %{
           time_offset: 0,
           # template: [:time, '[', :level, '] ', :msg, '\n']
           template: [
-            :time, ' ', '[', :level, '] ', {:pid, [:pid, ' '], []},
-            {:mfa, [:mfa, ' '], []}, {:file, [:file], []}, {:line, [':', :line, ' '], []}, :msg, '\n'
+            :time,
+            ' ',
+            '[',
+            :level,
+            '] ',
+            {:pid, [:pid, ' '], []},
+            {:mfa, [:mfa, ' '], []},
+            {:file, [:file], []},
+            {:line, [':', :line, ' '], []},
+            :msg,
+            '\n'
           ]
         }}
-      }
-    }
-  ]
+   }}
+]
 
 # config :opentelemetry, :processors,
 #   otel_batch_processor: %{

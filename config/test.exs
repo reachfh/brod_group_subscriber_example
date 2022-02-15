@@ -1,6 +1,6 @@
 import Config
 
-app_ext_name = String.replace(to_string(Mix.Project.config[:app]), "_", "-")
+app_ext_name = String.replace(to_string(Mix.Project.config()[:app]), "_", "-")
 state_dir = "state"
 data_dir = "#{state_dir}/data"
 log_dir = "logs"
@@ -28,11 +28,10 @@ config :logger, :console,
   metadata: [:pid, :module, :function, :line]
 
 # https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/
-config :opentelemetry, :resource,
-  [
-    # In production service.name is set based on OS env vars from Erlang release
-    service: [
-      name: Mix.Project.config[:app],
-      version: Mix.Project.config[:version]
-    ]
+config :opentelemetry, :resource, [
+  # In production service.name is set based on OS env vars from Erlang release
+  service: [
+    name: Mix.Project.config()[:app],
+    version: Mix.Project.config()[:version]
   ]
+]

@@ -1,9 +1,10 @@
 defmodule BrodGroupSubscriberExample.SubscriberBase do
   @callback child_spec(Keyword.t()) :: map()
   @callback init(map(), map()) :: {:ok, map()}
-  @callback handle_message(tuple(), map()) :: {:ok, :ack, map()} | {:ok, :commit, map()} | {:ok, map()}
-  @callback process_message(map(), map()) :: {:ok, map()} | {:ok, :ack, map()} | {:error, term(), map()}
-
+  @callback handle_message(tuple(), map()) ::
+              {:ok, :ack, map()} | {:ok, :commit, map()} | {:ok, map()}
+  @callback process_message(map(), map()) ::
+              {:ok, map()} | {:ok, :ack, map()} | {:error, term(), map()}
 
   @optional_callbacks child_spec: 1, init: 2, handle_message: 2
 
@@ -31,6 +32,7 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
       require OpenTelemetry.Tracer, as: Tracer
 
       require Record
+
       Record.defrecord(
         :kafka_message,
         Record.extract(:kafka_message, from_lib: "brod/include/brod.hrl")
@@ -75,9 +77,13 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
         Logger.debug("trace context from kafka headers: #{inspect(ctx)}")
 
         lag = SubscriberBase.get_lag(message)
-        attributes = [
-          offset: offset, ts: ts, lag: lag,
-        ] ++ SubscriberBase.messaging_attributes_process(message, state)
+
+        attributes =
+          [
+            offset: offset,
+            ts: ts,
+            lag: lag
+          ] ++ SubscriberBase.messaging_attributes_process(message, state)
 
         Tracer.with_span "#{topic} process", %{kind: :consumer, attributes: attributes} do
           Logger.debug("topic #{topic} part #{partition} #{inspect(message)}")
@@ -95,8 +101,11 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
               dlq_topic = dead_letter_queues[topic]
 
               send_attributes = SubscriberBase.messaging_attributes_send(dlq_topic, key, value)
-              Tracer.with_span "#{dlq_topic} send", %{kind: :producer, attributes: send_attributes} do
 
+              Tracer.with_span "#{dlq_topic} send", %{
+                kind: :producer,
+                attributes: send_attributes
+              } do
                 # TODO: set header
                 produce_headers = :otel_propagator_text_map.inject([])
                 Logger.debug("produce_headers: #{inspect(produce_headers)}")
@@ -105,7 +114,9 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
 
                 Tracer.set_attribute("offset", offset)
 
-                Logger.debug("Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}")
+                Logger.debug(
+                  "Produced key #{inspect(key)} to topic #{dlq_topic} offset #{offset}"
+                )
 
                 Tracer.set_status({:ok, ""})
 
@@ -121,7 +132,6 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
       end
 
       defoverridable SubscriberBase
-
     end
   end
 
@@ -132,14 +142,15 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
 
     [
       # {"service.name", @app},
-      {"messaging.operation", "process"}, # or maybe "receive"
+      # or maybe "receive"
+      {"messaging.operation", "process"},
       {"messaging.system", "kafka"},
       {"messaging.destination_kind", "topic"},
       {"messaging.kafka.message_key", key},
       {"messaging.message_payload_size_bytes", byte_size(value)},
       {"messaging.destination", topic},
       {"messaging.kafka.partition", partition},
-      {"messaging.kafka.consumer_group", group_id},
+      {"messaging.kafka.consumer_group", group_id}
     ]
   end
 
@@ -152,7 +163,7 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
       {"messaging.destination", topic},
       {"messaging.kafka.message_key", key},
       {"messaging.message_payload_size_bytes", byte_size(value)},
-      {"messaging.operation", "send"},
+      {"messaging.operation", "send"}
     ]
   end
 
@@ -189,6 +200,7 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
   @spec backoff(non_neg_integer(), map()) :: non_neg_integer()
   def backoff(took, %{backoff_threshold: backoff_threshold} = config) do
     backoff_multiple = config[:backoff_multiple] || 10
+
     if took > backoff_threshold do
       backoff = backoff_multiple * took
       Logger.warning("Backoff #{backoff}")
@@ -202,5 +214,4 @@ defmodule BrodGroupSubscriberExample.SubscriberBase do
   def backoff(_took, _config) do
     0
   end
-
 end

@@ -25,7 +25,8 @@ defmodule BrodGroupSubscriberExample.KafkaUtils do
     {endpoints, sock_opts}
   end
 
-  @spec resolve_offsets(binary(), :earliest | :latest, atom()) :: list({non_neg_integer(), integer()})
+  @spec resolve_offsets(binary(), :earliest | :latest, atom()) ::
+          list({non_neg_integer(), integer()})
   def resolve_offsets(topic, type, client) do
     {endpoints, sock_opts} = connection(client)
 
@@ -37,7 +38,8 @@ defmodule BrodGroupSubscriberExample.KafkaUtils do
     end
   end
 
-  @spec list_all_groups(atom()) :: list({endpoint(), list({:brod_cg, name :: binary(), type :: binary()})})
+  @spec list_all_groups(atom()) ::
+          list({endpoint(), list({:brod_cg, name :: binary(), type :: binary()})})
   def list_all_groups(client) do
     {endpoints, sock_opts} = connection(client)
 

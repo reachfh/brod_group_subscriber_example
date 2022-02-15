@@ -1,6 +1,6 @@
 import Config
 
-app_ext_name = String.replace(to_string(Mix.Project.config[:app]), "_", "-")
+app_ext_name = String.replace(to_string(Mix.Project.config()[:app]), "_", "-")
 state_dir = "state"
 data_dir = "#{state_dir}/data"
 log_dir = "logs"
@@ -26,14 +26,15 @@ config :brod_group_subscriber_example,
     # Optional, default :undefined
     init_data: %{
       # Mapping from Kafka topic to Avro subject/schema
-      subjects: %{
-        # "log_request" => "com.cogini.RequestLog"
-      },
+      subjects:
+        %{
+          # "log_request" => "com.cogini.RequestLog"
+        },
       dead_letter_queues: %{
         "foo" => "foo-dlq"
       },
       offsets_tab: :kafka_offsets,
-      client: :client1,
+      client: :client1
       # backoff_threshold: 300,
       # backoff_multiple: 10,
     },
@@ -68,15 +69,18 @@ config :brod_group_subscriber_example,
 config :brod,
   clients: [
     client1: [
-      endpoints: [localhost: 9092], # non ssl
+      # non ssl
+      endpoints: [localhost: 9092],
       # endpoints: [localhost: 9093], # ssl
-      allow_topic_auto_creation: false, # for safety, default true
+      # for safety, default true
+      allow_topic_auto_creation: false,
       # get_metadata_timeout_seconds: 5, # default 5
       # max_metadata_sock_retry: 2, # seems obsolete
       max_metadata_sock_retry: 5,
       # query_api_versions: false, # default true, set false for Kafka < 0.10
       # reconnect_cool_down_seconds: 1, # default 1
-      restart_delay_seconds: 10, # default 5
+      # default 5
+      restart_delay_seconds: 10,
       # ssl: [
       #   certfile: to_charlist("#{config_dir}/ssl/kafka/cert.pem"),
       #   keyfile: to_charlist("#{config_dir}/ssl/kafka/key.pem"),
@@ -92,13 +96,14 @@ config :brod,
         # See brod/src/brod_producer.erl
         # required_acks: -1,
         # ack_timeout: 10000,
-        partition_buffer_limit: 512, # default is 256
+        # default is 256
+        partition_buffer_limit: 512,
         # partition_onwire_limit: 1,
         # max_batch_size: 10_485_760, # default is 1M
         # buffered messages again upon receiving a error from kafka
         # by default, brod_producer will try to retry 3 times before crashing
         # max_retries: 3,
-        max_retries: 5,
+        max_retries: 5
         # By default, brod_producer will sleep for 0.5 second before trying to send
         # retry_backoff_ms: 500,
         # compression: :no_compression,
@@ -128,13 +133,12 @@ config :logger, :console,
   metadata: [:pid, :module, :function, :line]
 
 # https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/
-config :opentelemetry, :resource,
-  [
-    # In production service.name is set based on OS env vars from Erlang release
-    {"service.name", to_string(Mix.Project.config[:app])},
-    # {"service.namespace", "MyNamespace"},
-    {"service.version", Mix.Project.config[:version]},
-  ]
+config :opentelemetry, :resource, [
+  # In production service.name is set based on OS env vars from Erlang release
+  {"service.name", to_string(Mix.Project.config()[:app])},
+  # {"service.namespace", "MyNamespace"},
+  {"service.version", Mix.Project.config()[:version]}
+]
 
 # config :opentelemetry, :processors,
 #   otel_batch_processor: %{

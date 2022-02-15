@@ -6,7 +6,7 @@ defmodule BrodGroupSubscriberExample.Telemetry do
 
   Description of all events:
   """
-  @app Mix.Project.config[:app]
+  @app Mix.Project.config()[:app]
 
   @doc false
   # emits a `start` telemetry event and returns the the start time

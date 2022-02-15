@@ -60,12 +60,12 @@ defmodule BrodGroupSubscriberExample.LoggerFormatter do
   # <1>This is an ALERT level message
   # <0>This is an EMERG level message
   defp _journald_level(level)
-  defp _journald_level(:debug),  do: "<7>"
-  defp _journald_level(:info),   do: "<6>"
+  defp _journald_level(:debug), do: "<7>"
+  defp _journald_level(:info), do: "<6>"
   defp _journald_level(:notice), do: "<5>"
-  defp _journald_level(:warn),   do: "<4>"
-  defp _journald_level(:warning),do: "<4>"
-  defp _journald_level(:error),  do: "<3>"
+  defp _journald_level(:warn), do: "<4>"
+  defp _journald_level(:warning), do: "<4>"
+  defp _journald_level(:error), do: "<3>"
 
   # defp _msg(msg) do
   #   msg

@@ -28,17 +28,21 @@ defmodule BrodGroupSubscriberExample.MixProject do
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test
-      ],
+      ]
     ]
   end
 
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [
-        :logger, :runtime_tools, :gproc, :tls_certificate_check,
-        :hackney
-      ] ++ extra_applications(Mix.env()),
+      extra_applications:
+        [
+          :logger,
+          :runtime_tools,
+          :gproc,
+          :tls_certificate_check,
+          :hackney
+        ] ++ extra_applications(Mix.env()),
       mod: {BrodGroupSubscriberExample.Application, []}
     ]
   end
@@ -48,11 +52,17 @@ defmodule BrodGroupSubscriberExample.MixProject do
   def extra_applications(_), do: []
 
   defp erlc_options do
-    includes = Path.wildcard(Path.join(Mix.Project.deps_path, "*/include"))
-    [:debug_info, :warnings_as_errors,
-      :warn_export_all, :warn_export_vars, :warn_shadow_vars,
-      :warn_obsolete_guard] ++
-    Enum.map(includes, fn(path) -> {:i, path} end)
+    includes = Path.wildcard(Path.join(Mix.Project.deps_path(), "*/include"))
+
+    [
+      :debug_info,
+      :warnings_as_errors,
+      :warn_export_all,
+      :warn_export_vars,
+      :warn_shadow_vars,
+      :warn_obsolete_guard
+    ] ++
+      Enum.map(includes, fn path -> {:i, path} end)
   end
 
   defp releases do
@@ -92,7 +102,7 @@ defmodule BrodGroupSubscriberExample.MixProject do
       {:telemetry, "~> 0.4.3", override: true},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
-      {:timex, "~> 3.6"},
+      {:timex, "~> 3.6"}
     ]
   end
 end

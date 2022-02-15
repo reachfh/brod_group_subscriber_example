@@ -22,10 +22,12 @@ defmodule BrodGroupSubscriberExample.KafkaOffsets do
     Process.flag(:trap_exit, true)
 
     tab_name = args[:tab_name] || @default_tab_name
+
     file =
       case Keyword.fetch(args, :file) do
         {:ok, value} ->
           value
+
         :error ->
           "/tmp/#{tab_name}.DETS"
       end
